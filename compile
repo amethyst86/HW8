@@ -1,4 +1,7 @@
+rm *.class
+javac NetProxy.java
 javac Server.java
-javac Client.java
+javac PrimeServerStartup.java
+javac OddServerStartup.java
 javac Link.java
 javac FlyweightDemo.java

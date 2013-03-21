@@ -1,72 +1,135 @@
-
-
-// Purpose.  Chain of Responsibility - links bid on job, chain assigns job
-//
-// 1. Base class maintains a "next" pointer
-// 2. Each "link" does its part to handle (and/or pass on) the request
-// 3. Client "launches and leaves" each request with the chain
-// 4. The current bid and bidder are maintained in chain static members
-// 5. The last link in the chain assigns the job to the low bidder
-
 import java.util.Arrays;
+import java.util.concurrent.*;
 
-public class Link {
-      private static boolean[] primes = new boolean[255];
+// Chain's Link face
+abstract class LinkFace {
+	ServerFace srv;
+      	LinkFace next;
 
-      private int id;
-      private ServerFace  srv;
-      private Link next;                       // 1. "next" pointer
-      
-      private static Link handler;
+      	public LinkFace( ServerFace server ) {
+         	srv = server;
+      	}
 
-      public Link( int num, ServerFace server ) {
-	 id = num;
-         srv = server;
-	 fillPrime();
-      }
+      	public void addLast( LinkFace l ) {
+         	if (next != null) next.addLast( l );  
+         	else              next = l; 
+      	}
 
-      private static void fillPrime() {
-         Arrays.fill( primes, true);
-         primes[0] = primes[1] = false;
-         for (int i=2; i<primes.length; i++) {
-	     if( primes[i] ){
-	         for( int j=2; i*j<primes.length; j++){
-		     primes[i*j] = false;
-	         }
-	     }
-         } 
-      }
+      	public void handle( int number ) {};
 
-      public void addLast( Link l ) {
-         if (next != null) next.addLast( l );  // 2. Handle and/or pass on
-         else              next = l; 
-      }
+	void execute(int number) {
+		CompResult res = srv.mash_number( number );
+		print_result( res );
+   	}
 
-      public void handle(int number) {
-         //System.out.print( id + ":bid " + num + "("+theBid+" low),  " );
-	 if( primes[number] )
-	 {
-		if( id == 1 ) handler = this;
-	 }
-	 else if( number%2 == 1 )
-	 {
-		if( id == 2 ) handler = this;
-	 }
-         else
-	 {
-		if( id == 3 ) handler = this;
-	 }
-         if (next != null) next.handle(number);         // 2. Handle and/or pass on
-         else              handler.execute(number);   // 5. The last 1 assigns the job
-      }
+	public void dispose() {
+		srv.dispose();
+		if( next != null ) {
+			next.dispose();
+		}
+	}
 
-      public void execute(int number) {
-         Client clt = new Client();
-	 clt.start( srv, number );
-	 System.out.println( "done. >>> Processor " + id + " handles " + number + "\n" );
-   }
+	static void print_result(CompResult res) {
+		if( res.tag == CompTag.LOCAL ) {
+			
+			System.out.println("[Local] " + Integer.toString(res.value));
+			
+		}else if( res.tag == CompTag.REMOTE ) {
+			
+			System.out.println("[Remote] " + Integer.toString(res.value));
+			
+		}else if( res.tag == CompTag.CACHE ) {
+			
+			System.out.println("[Cache] " + Integer.toString(res.value));
+		}
+	}
+}
 
+//
+//  Prime Link
+//
+class PrimeLink extends LinkFace {
+
+      	private static boolean[] primes = new boolean[255];
+
+	public PrimeLink( ServerFace server ) { 
+		super( server );
+	}
+
+      	private static void fillPrime() {
+         	Arrays.fill( primes, true);
+         	primes[0] = primes[1] = false;
+         	for (int i=2; i<primes.length; i++) {
+	     		if( primes[i] ){
+	         		for( int j=2; i*j<primes.length; j++){
+		     			primes[i*j] = false;
+	         		}
+	     		}
+         	} 
+      	}
+
+      	public void handle(int number) {
+         	fillPrime();
+	 	if( primes[number] ) {
+			System.out.println( "Running prime handle PH…" );
+			execute(number);
+			System.out.println( "Prime handle finished.\n" );
+	 	}
+	 	else {
+			if( next == null ) System.out.println( "No handle after prime" );
+			else next.handle(number);  
+		}   
+      	}
 }  
+
+//
+//  Odd Link
+//
+class OddLink extends LinkFace {
+	public OddLink( ServerFace server ) { 
+		super( server );
+	}
+
+      	public void handle(int number) {
+	 	if( number%2 == 1 ) {
+			System.out.println( "Running odd handle OH …" );
+			System.out.println( "Waiting for 30 seconds … " );
+			try {
+				TimeUnit.SECONDS.sleep( 30 );
+			} catch( Exception e ) { 
+				e.printStackTrace();
+			}
+			execute(number);
+			System.out.println( "Odd handle finished.\n" );
+	 	}
+	 	else {
+			if( next == null ) System.out.println( "No handle after Odd" );
+			else next.handle(number); 
+		}    
+      	}
+}  
+
+//
+//  Even Link
+//
+class EvenLink extends LinkFace {
+	public EvenLink( ServerFace server ) { 
+		super( server );
+	}
+
+      	public void handle(int number) {
+	 	if( number%2 == 0 ) {
+			System.out.println( "Running even handle EH …" );
+			execute(number);
+			System.out.println( "Even handle finished.\n" );
+	 	}
+	 	else {
+			if( next == null ) System.out.println( "No handle after even" );
+			else next.handle(number);
+		}     
+      	}
+}  
+
 
 
 

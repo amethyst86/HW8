@@ -11,7 +11,7 @@ import java.awt.event.*;
 class FlyweightFactory {
    private static java.util.Hashtable ht = new java.util.Hashtable();
    private static ButtonListener bl = new ButtonListener();
-   public static Button makeButton( String num, Link chain ) {
+   public static Button makeButton( String num, LinkFace chain ) {
       if (ht.containsValue( num ))
          return (Button) ht.get( num );        // 2. Return an existing object
       Button btn = new Button( num );          // 1. Identify intrinsic state
@@ -29,8 +29,8 @@ class FlyweightFactory {
 }
 
 class ButtonListener implements ActionListener {
-   private Link chain;
-   public void setChain (Link _chain) {
+   private LinkFace chain;
+   public void setChain (LinkFace _chain) {
 	chain = _chain;
    }	
    public void actionPerformed( ActionEvent e) {
@@ -42,18 +42,29 @@ class ButtonListener implements ActionListener {
          if (btn == btns[i]) break;
       // 4. A third party must compute the extrinsic state (x and y)
       //    (the Button label is intrinsic state)
-      System.out.print( "label-" + e.getActionCommand()
+      System.out.println( "label-" + e.getActionCommand()
          + "  x-" + i/FlyweightDemo.NUM   + "  y-" + i%FlyweightDemo.NUM );  // 1. Identify extrinsic state
       chain.handle( Integer.parseInt( e.getActionCommand() ) );
    }  
 }
 
+class ClosableFrame extends Frame {
+	public ClosableFrame() {
+		addWindowListener( new WindowAdapter() {
+	 	public void windowClosing( WindowEvent e ) {
+			FlyweightDemo.chain.dispose();	
+	    		System.exit(0);
+		}
+      		} );
+	}
+}
+
 class FlyweightDemo {
    public static final int NUM = 15;
    public static final int RAN = 224;
-   static Link chain = setUpChain();
+   static LinkFace chain = setUpChain();
    public static void main( String[] args ) {
-      Frame frame = new Frame( "Flyweight Demo" );
+      ClosableFrame frame = new ClosableFrame();
       frame.setLayout( new GridLayout( NUM, NUM ) );
       for (int i=0; i < NUM; i++)
          for (int j=0; j < NUM; j++)
@@ -65,26 +76,18 @@ class FlyweightDemo {
       FlyweightFactory.report();
    }  
 
-   static Link setUpChain() {
+   static LinkFace setUpChain() {
       // set up the chain
-      ServerFace srvPrime = new ServerPrime();
-      ServerFace srvOdd = new ServerOdd();
-      ServerFace srvEven = new ServerEven();
+      ServerFace srvPrime = new PrimeNetServer("127.0.0.1", 5561);
+      ServerFace srvOdd = new OddNetServerProxy("127.0.0.1", 9876, (long)(3e10));
+      ServerFace srvEven = new EvenServerProxy();
       
-      Link first = new Link( 1, srvPrime );
-      Link second = new Link( 2, srvOdd );
-      Link third = new Link( 3, srvEven );
+      LinkFace first = new PrimeLink( srvPrime );
+      LinkFace second = new OddLink( srvOdd );
+      LinkFace third = new EvenLink( srvEven );
       first.addLast( second );
       first.addLast( third );
    
       return first;
    }
 }
-
-// size=25   24 23 22 21 20 19 18 17 16 9 15 8 14 13 7 12 6 5 11 10 4 3 2 1 0
-// label-23  x-0  y-0
-// label-7  x-0  y-1
-// label-21  x-1  y-1
-// label-21  x-4  y-6
-// label-7  x-9  y-9
-
