@@ -1,5 +1,4 @@
 import java.util.Arrays;
-import java.util.concurrent.*;
 
 // Chain's Link face
 abstract class LinkFace {
@@ -71,12 +70,12 @@ class PrimeLink extends LinkFace {
       	public void handle(int number) {
          	fillPrime();
 	 	if( primes[number] ) {
-			System.out.println( "Running prime handle PH…" );
+			System.out.println( "Running prime handler PH…" );
 			execute(number);
-			System.out.println( "Prime handle finished.\n" );
+			System.out.println( "Prime handler finished.\n" );
 	 	}
 	 	else {
-			if( next == null ) System.out.println( "No handle after prime" );
+			if( next == null ) System.out.println( "No handler after the prime one." );
 			else next.handle(number);  
 		}   
       	}
@@ -92,18 +91,12 @@ class OddLink extends LinkFace {
 
       	public void handle(int number) {
 	 	if( number%2 == 1 ) {
-			System.out.println( "Running odd handle OH …" );
-			System.out.println( "Waiting for 30 seconds … " );
-			try {
-				TimeUnit.SECONDS.sleep( 30 );
-			} catch( Exception e ) { 
-				e.printStackTrace();
-			}
+			System.out.println( "Running odd handler OH …" );
 			execute(number);
-			System.out.println( "Odd handle finished.\n" );
+			System.out.println( "Odd handler finished.\n" );
 	 	}
 	 	else {
-			if( next == null ) System.out.println( "No handle after Odd" );
+			if( next == null ) System.out.println( "No handler after the odd one." );
 			else next.handle(number); 
 		}    
       	}
@@ -119,12 +112,12 @@ class EvenLink extends LinkFace {
 
       	public void handle(int number) {
 	 	if( number%2 == 0 ) {
-			System.out.println( "Running even handle EH …" );
+			System.out.println( "Running even handler EH …" );
 			execute(number);
-			System.out.println( "Even handle finished.\n" );
+			System.out.println( "Even handler finished.\n" );
 	 	}
 	 	else {
-			if( next == null ) System.out.println( "No handle after even" );
+			if( next == null ) System.out.println( "No handler after the even one." );
 			else next.handle(number);
 		}     
       	}
