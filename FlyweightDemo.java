@@ -1,93 +1,133 @@
-// Purpose.  Flyweight design pattern
-//
-// 1. Identify shareable state (intrinsic) and non-shareable state (extrinsic)
-// 2. Create a Factory that can return an existing object or a new object
-// 3. The client must use the Factory instead of "new" to request objects
-// 4. The client (or a third party) must compute the extrinsic state
+// Flyweight, Chain of Responsibility and Proxy Demo
+// this file contains the main entry.
 
 import java.awt.*;
 import java.awt.event.*;
+import javax.swing.JOptionPane;
+import java.util.Hashtable;
+import java.util.Enumeration;
 
+
+// Flyweight Factory used to generate Buttons
 class FlyweightFactory {
-   private static java.util.Hashtable ht = new java.util.Hashtable();
-   private static ButtonListener bl = new ButtonListener();
-   public static Button makeButton( String num, LinkFace chain ) {
-      if (ht.containsValue( num ))
-         return (Button) ht.get( num );        // 2. Return an existing object
-      Button btn = new Button( num );          // 1. Identify intrinsic state
-      bl.setChain( chain );
-      btn.addActionListener( bl );
-      ht.put( num, btn );
-      return btn;                              // 2. Return a new object
-   }
-   public static void report() {
-      System.out.print( "size=" + ht.size() + "   " );
-      for (java.util.Enumeration e = ht.keys(); e.hasMoreElements(); )
-         System.out.print( e.nextElement() + " " );
-      System.out.println();
-   }  
+	// Button Cache
+	private static Hashtable<String, Button> ht = new Hashtable<String, Button>();
+	
+	// all buttons share the same button listener
+	private static ButtonListener bl = new ButtonListener();
+	
+	public static Button makeButton( String num ) {
+		
+		// if the requested Button exists
+		if (ht.containsValue( num ))
+			return (Button) ht.get( num );
+		
+		// otherwise, generate one and cache it
+		Button btn = new Button( num );          
+		btn.addActionListener( bl );
+		ht.put( num, btn );
+		
+		return btn;
+	}
+	
+	// report buttons created
+	public static void report() {
+		System.out.print( "size=" + ht.size() + "   " );
+		for (Enumeration<String> e = ht.keys(); e.hasMoreElements(); )
+			System.out.print( e.nextElement() + " " );
+		System.out.println();
+	}  
 }
 
+// ButtonListener: actions performed when button is clicked
 class ButtonListener implements ActionListener {
-   private LinkFace chain;
-   public void setChain (LinkFace _chain) {
-	chain = _chain;
-   }	
-   public void actionPerformed( ActionEvent e) {
-      Button      btn  = (Button) e.getSource();
-      Component[] btns = btn.getParent().getComponents();
-      float stuff[] = new float[500];
-      int i = 0;
-      for ( ; i < btns.length; i++)
-         if (btn == btns[i]) break;
-      // 4. A third party must compute the extrinsic state (x and y)
-      //    (the Button label is intrinsic state)
-      System.out.println( "label-" + e.getActionCommand()
-         + "  x-" + i/FlyweightDemo.NUM   + "  y-" + i%FlyweightDemo.NUM );  // 1. Identify extrinsic state
-      chain.handle( Integer.parseInt( e.getActionCommand() ) );
-   }  
+
+	public void actionPerformed( ActionEvent e) {
+		Button      btn  = (Button) e.getSource();
+		ClosableFrame parent = (ClosableFrame)(btn.getParent());
+		
+		Component[] btns = btn.getParent().getComponents();
+		
+		// find the location of clicked button in the layout
+		int i = 0;
+		for (; i < btns.length; i++)
+			if (btn == btns[i]) break;
+		
+		System.out.println( "label-" + e.getActionCommand()
+				+ "  x-" + i/FlyweightDemo.NUM   + "  y-" + i%FlyweightDemo.NUM );  // 1. Identify extrinsic state
+		
+		// ask chain to handle it
+		CompResult res = parent.chain.handle( Integer.parseInt( e.getActionCommand() ) );
+
+		// display the results through messagebox
+		JOptionPane.showMessageDialog(btn.getParent(), res.to_string(), "Your Result", JOptionPane.INFORMATION_MESSAGE);
+	}  
 }
 
+
+// Closable Framework
 class ClosableFrame extends Frame {
+	
+	static final long serialVersionUID = 723L;
+	
+	String serv_ip = "127.0.0.1";
+	int prime_port = 5561;
+	int odd_port = 9876;
+	
+	ServerFace srvPrime = new PrimeNetServer(serv_ip, prime_port);
+	ServerFace srvOdd = new OddNetServerProxy(serv_ip, odd_port, (long)(3e10));
+	ServerFace srvEven = new EvenServerProxy();
+	
+	LinkFace chain = null;
+	
+	LinkFace setUpChain() {
+		
+		// setup the chain
+		LinkFace first = new PrimeLink( srvPrime );
+		LinkFace second = new OddLink( srvOdd );
+		LinkFace third = new EvenLink( srvEven );
+		first.addLast( second );
+		first.addLast( third );
+
+		return first;
+	}
+	
 	public ClosableFrame() {
+		
+		// setup the event chain
+		chain = setUpChain();
+		
+		// add close event handler
 		addWindowListener( new WindowAdapter() {
-	 	public void windowClosing( WindowEvent e ) {
-			FlyweightDemo.chain.dispose();	
-	    		System.exit(0);
-		}
-      		} );
+			public void windowClosing( WindowEvent e ) {
+				
+				srvPrime.dispose();
+				srvOdd.dispose();
+				srvEven.dispose();
+				
+				System.exit(0);
+			}
+		} );
 	}
 }
 
 class FlyweightDemo {
-   public static final int NUM = 15;
-   public static final int RAN = 224;
-   static LinkFace chain = setUpChain();
-   public static void main( String[] args ) {
-      ClosableFrame frame = new ClosableFrame();
-      frame.setLayout( new GridLayout( NUM, NUM ) );
-      for (int i=0; i < NUM; i++)
-         for (int j=0; j < NUM; j++)
-            // 3. The client must use the Factory to request objects
-            frame.add( FlyweightFactory.makeButton( 
-               Integer.toString( (int)(Math.random()*RAN) ), chain ) );
-      frame.pack();
-      frame.setVisible( true );
-      FlyweightFactory.report();
-   }  
-
-   static LinkFace setUpChain() {
-      // set up the chain
-      ServerFace srvPrime = new PrimeNetServer("127.0.0.1", 5561);
-      ServerFace srvOdd = new OddNetServerProxy("127.0.0.1", 9876, (long)(3e10));
-      ServerFace srvEven = new EvenServerProxy();
-      
-      LinkFace first = new PrimeLink( srvPrime );
-      LinkFace second = new OddLink( srvOdd );
-      LinkFace third = new EvenLink( srvEven );
-      first.addLast( second );
-      first.addLast( third );
-   
-      return first;
-   }
+	
+	// grid width and random number max
+	public static final int NUM = 15;
+	public static final int RAN = 224;
+	
+	public static void main( String[] args ) {
+		
+		ClosableFrame frame = new ClosableFrame();
+		frame.setLayout( new GridLayout( NUM, NUM ) );
+		for (int i=0; i < NUM; i++)
+			for (int j=0; j < NUM; j++)
+				// 3. The client must use the Factory to request objects
+				frame.add( FlyweightFactory.makeButton( 
+						Integer.toString( (int)(Math.random()*RAN) + 1 ) ) );
+		frame.pack();
+		frame.setVisible( true );
+		FlyweightFactory.report();
+	} 
 }

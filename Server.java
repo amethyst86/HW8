@@ -2,11 +2,13 @@ import java.lang.Math;
 import java.util.Map;
 import java.util.TreeMap;
 
-// computation result class
+// indicate whether the result is computed from REMOTE, LOCAL, CACHE and UNHANDLED
 enum CompTag {
-	REMOTE, LOCAL, CACHE
+	REMOTE, LOCAL, CACHE, UNHANDLED
 }
 
+
+// class representing computation result
 class CompResult {
 	
 	CompTag tag;
@@ -16,6 +18,18 @@ class CompResult {
 	{
 		value = arg1;
 		tag = arg2;
+	}
+	
+	String to_string()
+	{
+		if( tag == CompTag.REMOTE )
+			return new String("[REMOTE] " + Integer.toString(value));
+		else if( tag == CompTag.LOCAL )
+			return new String("[LOCAL] " + Integer.toString(value));
+		else if( tag == CompTag.CACHE )
+			return new String("[CACHE] " + Integer.toString(value));
+		else
+			return new String("Unexpected Error!\n");
 	}
 }
 
@@ -27,9 +41,9 @@ interface ServerFace {
 }
 
 
-
 //
 // Even Servers
+// always add 1
 //
 class EvenLocalServer implements ServerFace {
 
@@ -43,6 +57,9 @@ class EvenLocalServer implements ServerFace {
 	
 }
 
+//
+// Even Proxy: if 6, return -1, otherwise call evenLocalServer
+// 
 class EvenServerProxy implements ServerFace {
 	
 	ServerFace serv = new EvenLocalServer();
@@ -67,7 +84,6 @@ class EvenServerProxy implements ServerFace {
 // Odd Servers
 //
 
-
 class OddNetServer implements ServerFace {
 	
 	ClientNetProxy net_proxy;
@@ -89,7 +105,9 @@ class OddNetServer implements ServerFace {
 	}
 }
 
-
+//
+// compute a non-deterministic function
+// 
 class OddLocalServer implements ServerFace {
 
 	public CompResult mash_number(int number) {
@@ -99,11 +117,12 @@ class OddLocalServer implements ServerFace {
 	}
 	
 	public void dispose() {}
-	
 }
 
 
-
+//
+// cache entity
+//
 class CachedResult {
 	
 	CachedResult(int arg1, long arg2) {
@@ -116,7 +135,9 @@ class CachedResult {
 	
 }
 
-
+//
+// Odd Proxy: use cache to reduce network comminucation
+//
 class OddNetServerProxy implements ServerFace {
 	
 	Map<Integer, CachedResult> cache = new TreeMap<Integer, CachedResult>();
@@ -162,7 +183,6 @@ class OddNetServerProxy implements ServerFace {
 // Prime Servers
 //
 
-
 class PrimeNetServer implements ServerFace {
 	
 	ClientNetProxy net_proxy;
@@ -184,7 +204,7 @@ class PrimeNetServer implements ServerFace {
 
 }
 
-
+// always double prime
 class PrimeLocalServer implements ServerFace {
 	
 	public CompResult mash_number(int number) {
